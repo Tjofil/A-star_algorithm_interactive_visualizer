@@ -25,6 +25,7 @@ class Vertex:
         pygame.draw.rect(win, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2) )
         #print(f'{self.x*VER_WIDTH}, {self.y*VER_HEIGHT} tried to be drawn.')
 
+
     def set_obstacle(self):
         self.color = self.OBS_COLOR
 
