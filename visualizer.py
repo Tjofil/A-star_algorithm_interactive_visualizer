@@ -21,17 +21,14 @@ class Vertex:
         self.x = x
         self.y = y
         self.color = self.DEF_COLOR
+        self.obs = False
     def display(self, win):
         pygame.draw.rect(win, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2) )
         #print(f'{self.x*VER_WIDTH}, {self.y*VER_HEIGHT} tried to be drawn.')
 
-
     def set_obstacle(self):
         self.color = self.OBS_COLOR
-
-
-
-
+        self.obs = True
 
 def draw(win, grid):
     win.fill(BLACK)
@@ -41,7 +38,6 @@ def draw(win, grid):
     pygame.display.update()
 
 def main():
-
     grid = [0 for i in range(NUM_ROW)]
     for i in range(NUM_ROW):
         grid[i] = [0 for i in range(NUM_COL)]
@@ -60,16 +56,21 @@ def main():
             if event.type == pygame.QUIT:
                 run = False
                 break
-            elif event.type == pygame.MOUSEBUTTONUP:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
                 grid[pos[0]//VER_WIDTH][pos[1]//VER_HEIGHT].set_obstacle()
-                print(f'Tried obsing {pos[0]//VER_WIDTH}, {pos[1]//VER_HEIGHT}')
                 draw(WIN, grid)
-
-
-
+                inner = True
+                while inner:
+                    for event2 in pygame.event.get():
+                        if event2.type == pygame.MOUSEBUTTONUP:
+                            inner = False
+                            break
+                        else:
+                            pos = pygame.mouse.get_pos()
+                            grid[pos[0]//VER_WIDTH][pos[1]//VER_HEIGHT].set_obstacle()
+                            draw(WIN, grid)
     pygame.quit()
-
 
 if __name__ == '__main__':
     main()
