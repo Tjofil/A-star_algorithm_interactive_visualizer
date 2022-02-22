@@ -30,6 +30,7 @@ class Vertex:
     PNT_COLOR = RED
     VST_COLOR = BLUE
     EDG_COLOR = DBLUE
+    win = WIN
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -43,16 +44,21 @@ class Vertex:
         self.vst_ngh = 0
         self.prev = 0
 
-    def display(self, win):
-        pygame.draw.rect(win, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
+    def display(self):
+        pygame.draw.rect(self.win, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
+        pygame.display.update((self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
 
-    def set_obstacle(self):
+    def set_obstacle(self, update):
         self.color = self.OBS_COLOR
         self.obs = True
+        if update:
+            self.display()
 
-    def set_point(self):
+    def set_point(self, update):
         self.color = self.PNT_COLOR
         self.pnt = True
+        if update:
+            self.display()
 
     def set_visit(self, start, end, prev):
         #print(f'{self.x} {self.y}')
@@ -71,25 +77,25 @@ class Vertex:
 
     def inc(self):
         self.vst_ngh += 1
+
     def pulse(self):
         if self.color == self.PNT_COLOR:
             return
         self.color = DBLUE
-        self.display(WIN)
-        pygame.display.update((self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
-
+        self.display()
+        pygame.time.wait(1)
 
     def unpulse(self):
         if len(self.neighbours) != self.vst_ngh or self.color == self.PNT_COLOR:
             return
         self.color = BLUE
-        self.display(WIN)
-        pygame.display.update((self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
+        self.display()
+        pygame.time.wait(1)
 
     def tst(self):
         if self.vst_ngh == len(self.neighbours):
             self.color = self.VST_COLOR
-            pygame.draw.rect(WIN, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
+            self.display()
     def path(self):
             self.color = self.PNT_COLOR
             pygame.draw.rect(WIN, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
@@ -117,7 +123,6 @@ class Vertex:
 
     def appoint_heuristic(self, end):
         self.hst = sqrt((self.x - end.x)**2 +(self.y-end.y)**2)
-        #self.hst = abs(self.x - end.x) + abs(self.y - end.y)
 
 
 def on_done():
@@ -138,8 +143,7 @@ def draw(win, grid):
     win.fill(BLACK)
     for i in range(NUM_ROW):
         for j in range(NUM_COL):
-            grid[i][j].display(win)
-    pygame.display.update()
+            grid[i][j].display()
 
 def prepare_simulation(grid, end):
     for row in grid:
@@ -148,7 +152,7 @@ def prepare_simulation(grid, end):
             vertex.appoint_heuristic(end)
 
 
-def simulation(win, grid, points):
+def simulation(win, points):
     pq = PriorityQueue()
     start, end = points
     visited = []
@@ -160,8 +164,7 @@ def simulation(win, grid, points):
         next = pq.get()
         next[3].set_visit(start, end, next[2])
         visited.append(next[3])
-        next[3].display(win)
-        pygame.display.update()
+        next[3].display()
         if (len(visited) % 25 == 0):
             for vertex in visited:
                 vertex.pulse()
@@ -174,10 +177,10 @@ def simulation(win, grid, points):
                 pq.put((next[3].dst + 1 + neighbour.hst, fifofy, next[3],neighbour))
                 neighbour.dst = next[3].dst + 1
                 fifofy+=1
-    prev = end
-    while prev != start:
-            prev.path()
-            prev = prev.prev
+    rec = end
+    while rec != start:
+            rec.path()
+            rec = rec.prev
     start.path()
     pygame.display.update()
     print("Done")
@@ -208,8 +211,7 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if obstacle_mode:
                     pos = pygame.mouse.get_pos()
-                    grid[pos[0]//VER_WIDTH][pos[1]//VER_HEIGHT].set_obstacle()
-                    draw(WIN, grid)
+                    grid[pos[0]//VER_WIDTH][pos[1]//VER_HEIGHT].set_obstacle(True)
                     inner = True
                     while inner:
                         for event2 in pygame.event.get():
@@ -218,13 +220,11 @@ def main():
                                 break
                             else:
                                 pos = pygame.mouse.get_pos()
-                                grid[pos[0]//VER_WIDTH][pos[1]//VER_HEIGHT].set_obstacle()
-                                draw(WIN, grid)
+                                grid[pos[0]//VER_WIDTH][pos[1]//VER_HEIGHT].set_obstacle(True)
                 elif not ready_for_simulation:
                     pos = pygame.mouse.get_pos()
                     points[0] = [pos[0]//VER_WIDTH, pos[1]//VER_HEIGHT]
-                    grid[points[0][0]][points[0][1]].set_point()
-                    draw(WIN, grid)
+                    grid[points[0][0]][points[0][1]].set_point(True)
                     inner = True
                     while inner:
                         for event2 in pygame.event.get():
@@ -233,8 +233,7 @@ def main():
                                 points[1] = [pos[0]//VER_WIDTH, pos[1]//VER_HEIGHT]
                                 if (points[1] == points[0]):
                                     continue
-                                grid[points[1][0]][points[1][1]].set_point()
-                                draw(WIN, grid)
+                                grid[points[1][0]][points[1][1]].set_point(True)
                                 inner = False
                                 ready_for_simulation = True
                                 break
@@ -268,14 +267,12 @@ def main():
         elif keys[pygame.K_SPACE] and ready_for_simulation:
             ready_for_simulation = False
             prepare_simulation(grid, grid[points[1][0]][points[1][1]])
-            simulation(WIN, grid, (grid[points[0][0]][points[0][1]], grid[points[1][0]][points[1][1]]))
+            simulation(WIN, (grid[points[0][0]][points[0][1]], grid[points[1][0]][points[1][1]]))
         elif keys[pygame.K_r]:
             grid[points[0][0]][points[0][1]].reset()
             grid[points[1][0]][points[1][1]].reset()
             draw(WIN, grid)
             ready_for_simulation = False
-
-
 
     pygame.quit()
 
