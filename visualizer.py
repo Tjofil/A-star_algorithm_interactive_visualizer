@@ -1,7 +1,7 @@
-from time import sleep
 import pygame
 from tkinter import *
 from tkinter import ttk
+from queue import PriorityQueue
 pygame.init()
 
 WIDTH, HEIGHT = 800, 800
@@ -12,6 +12,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 128, 0)
 RED = (255, 0, 0)
+BLUE = (230, 230, 250)
 
 NUM_COL, NUM_ROW = 50, 50
 VER_WIDTH, VER_HEIGHT = WIDTH//NUM_COL, HEIGHT//NUM_ROW
@@ -24,14 +25,19 @@ class Vertex:
     DEF_COLOR = WHITE
     OBS_COLOR = GREEN
     PNT_COLOR = RED
+    VST_COLOR = BLUE
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.color = self.DEF_COLOR
         self.obs = False
-        self.pnt = True
+        self.pnt = False
+        self.vst = False
+        self.neighbours = []
+        self.dst = -1
+
     def display(self, win):
-        pygame.draw.rect(win, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2) )
+        pygame.draw.rect(win, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
         #print(f'{self.x*VER_WIDTH}, {self.y*VER_HEIGHT} tried to be drawn.')
 
     def set_obstacle(self):
@@ -42,9 +48,31 @@ class Vertex:
         self.color = self.PNT_COLOR
         self.pnt = True
 
+    def set_visit(self, start, end):
+        if start != self and end != self:
+            self.color = self.VST_COLOR
+        self.vst = True
+
+    def is_visited(self):
+        return self.vst
+
     def reset(self):
         self.color = self.DEF_COLOR
         self.pnt = False
+        self.obs = False
+        self.vst = False
+
+    def appoint_neighbours(self, grid):
+        if self.obs:
+            return
+        if self.x > 0 and not grid[self.x-1][self.y].obs:
+            self.neighbours.append(grid[self.x-1][self.y])
+        if self.x < NUM_COL - 1 and not grid[self.x+1][self.y].obs:
+            self.neighbours.append(grid[self.x+1][self.y])
+        if self.y > 0 and not grid[self.x][self.y-1].obs:
+            self.neighbours.append(grid[self.x][self.y-1])
+        if self.y < NUM_ROW - 1 and not grid[self.x][self.y+1].obs:
+            self.neighbours.append(grid[self.x][self.y+1])
 
 
 def on_done():
@@ -67,6 +95,36 @@ def draw(win, grid):
         for j in range(NUM_COL):
             grid[i][j].display(win)
     pygame.display.update()
+
+def prepare_simulation(grid):
+    for row in grid:
+        for vertex in row:
+            vertex.appoint_neighbours(grid)
+
+
+def simulation(win, grid, points):
+    pq = PriorityQueue()
+    fifofy = 0
+    grid[points[0][0]][points[0][1]].dst = 0
+    pq.put((0, fifofy, grid[points[0][0]][points[0][1]]))
+    fifofy+=1
+    while not pq.empty():
+        next = pq.get()
+        next[2].set_visit(grid[points[0][0]][points[0][1]], grid[points[1][0]][points[1][1]])
+        next[2].display(win)
+        pygame.display.update()
+        if next[2] == grid[points[1][0]][points[1][1]]:
+            break
+        for neighbour in next[2].neighbours:
+            if next[0] + 1 < neighbour.dst or neighbour.dst == -1:
+                pq.put((next[0] + 1, fifofy, neighbour))
+                neighbour.dst = next[0] + 1
+                fifofy+=1
+
+    pygame.display.update()
+    print("Done")
+
+
 
 def main():
     grid = [0 for _ in range(NUM_ROW)]
@@ -131,7 +189,7 @@ def main():
 
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE] and not ready_for_simulation:
+        if keys[pygame.K_SPACE] and obstacle_mode:
             #prompt label
             global window
             global destroyed_manually
@@ -150,8 +208,9 @@ def main():
                 window.destroy()
             print("ESCAPED")
         elif keys[pygame.K_SPACE] and ready_for_simulation:
-            print("SIMULATION")
-
+            ready_for_simulation = False
+            prepare_simulation(grid)
+            simulation(WIN, grid, points)
         elif keys[pygame.K_r]:
             grid[points[0][0]][points[0][1]].reset()
             grid[points[1][0]][points[1][1]].reset()
