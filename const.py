@@ -1,0 +1,22 @@
+from enum import Enum
+
+FPS = 60
+
+WIDTH, HEIGHT = 800, 800
+NUM_COL, NUM_ROW = 50, 50
+VER_WIDTH, VER_HEIGHT = WIDTH//NUM_COL, HEIGHT//NUM_ROW
+
+BLACK = (255, 255, 255)
+PAS_GREEN = (196, 238, 221)
+D_GREEN = (109, 207, 22)
+RED = (204, 39, 11)
+LBLUE = (184, 203, 239)
+DBLUE = (38, 148, 232)
+
+class Mode(Enum):
+    OBSTACLE = 1
+    PATH = 2
+    SIMULATION = 3
+    PRE_SIM = 4
+    RECONSTRUCT = 5
+    IDLE = 6
