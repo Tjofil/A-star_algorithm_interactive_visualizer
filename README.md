@@ -1,7 +1,7 @@
 # A* algorithm interactive visualization
 A visual simulation of popular algorithm using custom, distance based heuristic. 
 
-![Image](https://github.com/Tjofil/A-star_algorithm_interactive_visualizer/gif/sim.gif)
+![Image](https://github.com/Tjofil/A-star_algorithm_interactive_visualizer/blob/master/gif/sim.gif)
 
 ## Running
 Aside from [Python](https://www.python.org), third-party modules required to run the program are `pygame` and `tkinter` which can be obtained with pip by the following command:
@@ -19,5 +19,5 @@ Keyboard controls:
 
 >R - available only while choosing the starting and ending vertices to reset the process.
 
-![Image](https://github.com/Tjofil/A-star_algorithm_interactive_visualizer/gif/prep.gif)
+![Image](https://github.com/Tjofil/A-star_algorithm_interactive_visualizer/blob/master/gif/prep.gif)
 
