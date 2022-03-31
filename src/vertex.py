@@ -30,6 +30,8 @@ class Vertex:
 
 
     def set_obstacle(self, update):
+        if self.obs:
+            return
         self.color = self.OBS_COLOR
         self.obs = True
         if update:
