@@ -22,12 +22,12 @@ class PriorityQueue:
     def get(self):
         return heapq.heappop(self.elements)[2]
 
+
 WIDTH, HEIGHT = 800, 800
 NUM_COL, NUM_ROW = 50, 50
 VER_WIDTH, VER_HEIGHT = WIDTH//NUM_COL, HEIGHT//NUM_ROW
 
 BLACK = (255, 255, 255)
-# BLACK = (214, 250, 152)
 WHITE = (196, 238, 221)
 GREEN = (109, 207, 22)
 RED = (204, 39, 11)
@@ -47,19 +47,17 @@ class Vertex:
         self.color = self.DEF_COLOR
         self.obs = self.pnt = self.vst = False
         self.neighbours = []
-        self.dst = self.hst = -1
+        self.cost_so_far = self.hst = -1
         self.vst_ngh = 0
-        self.prev = 0
+        self.came_from = None
 
     def display(self):
-        # pygame.draw.rect(self.win, self.color ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
 
         if self.vst:
             pygame.draw.rect(self.win, BLACK ,(self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH, VER_HEIGHT))
             pygame.draw.circle(self.win, self.color, (self.x*VER_WIDTH+VER_WIDTH//2, self.y*VER_HEIGHT+VER_HEIGHT//2), VER_HEIGHT//2 + 1)
         else:
             pygame.draw.circle(self.win, self.color, (self.x*VER_WIDTH+VER_WIDTH//2, self.y*VER_HEIGHT+VER_HEIGHT//2), VER_HEIGHT//2 + 2)
-        # pygame.display.update((self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH-2, VER_HEIGHT-2))
         pygame.display.update((self.x*VER_WIDTH, self.y*VER_HEIGHT, VER_WIDTH, VER_HEIGHT))
 
 
@@ -75,11 +73,7 @@ class Vertex:
         if update:
             self.display()
 
-    def set_visit(self, start, end, prev):
-        # #print(f'{self.x} {self.y}')
-        # if self.vst: 
-        # print("RETARDU")
-
+    def set_visit(self, start, end):
         if start != self and end != self:
             self.color = self.EDG_COLOR
         self.vst = True
@@ -89,40 +83,23 @@ class Vertex:
                 neighbour.tst()
         if self != start and self != end:
             self.tst()
-        self.prev = prev
 
     def inc(self):
         self.vst_ngh += 1
-
-    def pulse(self):
-        if self.color == self.PNT_COLOR:
-            return
-        self.color = DBLUE
-        self.display()
-        # pygame.time.wait(1)
-
-    def unpulse(self):
-        if len(self.neighbours) != self.vst_ngh or self.color == self.PNT_COLOR:
-            return
-        self.color = BLUE
-        self.display()
-        # pygame.time.wait(1)
 
     def tst(self):
         if self.vst_ngh == len(self.neighbours):
             self.color = self.VST_COLOR
             self.display()
 
-    def path(self):
+    def recon(self):
             self.color = self.PNT_COLOR
             self.display()
 
         
     def reset(self, update):
         self.color = self.DEF_COLOR
-        self.pnt = False
-        self.obs = False
-        self.vst = False
+        self.pnt = self.obs = self.vst = False
         if update:
             self.display()
 
@@ -157,7 +134,6 @@ class Grid:
         self.win = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("A* Visualizer")
 
-        #create grid structure
         self.grid = [None for _ in range(NUM_ROW)]
         for i in range(NUM_ROW):
             self.grid[i] = [None for _ in range(NUM_COL)]
@@ -180,9 +156,6 @@ class Grid:
         self.s_chosen = self.e_chosen = False
 
         self.front = PriorityQueue()
-        self.came_from: Dict[Vertex, Optional[Vertex]] = {}
-        self.cost_so_far: Dict[Vertex, float] = {}
-
 
     def is_running(self):
         return self.running
@@ -196,6 +169,14 @@ class Grid:
         self.invasive.destroy()
 
     def on_resume(self):
+        self.invasive.destroy()
+    
+    def on_rerun(self):
+        self.invasive.destroy()
+        self.__init__()
+
+    def on_exit(self):
+        self.running = False
         self.invasive.destroy()
 
     def draw_all(self):
@@ -222,9 +203,6 @@ class Grid:
         
         elif self.mode == Mode.IDLE:
             self.idle_handle()
-        
-            
-        
 
     def obstacle_handle(self):
         for event in pygame.event.get():
@@ -247,7 +225,8 @@ class Grid:
                 self.invasive.geometry('205x110+850+490')
                 frame = Frame(self.invasive)
 
-                Label(frame, text = '\nAre you done putting up obstacles?\n\n').pack(side = 'top')
+                Label(frame, 
+                    text = '\nAre you done putting up obstacles\n           and want to proceed?\n').pack(side = 'top')
                 Button(frame, width=12, text = 'Resume',
                     command=lambda : self.on_resume()).pack(side = 'left')
                 Button(frame, width=12, text = 'Done!',
@@ -291,8 +270,8 @@ class Grid:
                 vertex.appoint_neighbours(self.grid)
                 vertex.appoint_heuristic(self.e_ver)
         self.front.put(self.s_ver, 0)
-        self.came_from[self.s_ver] = None
-        self.cost_so_far[self.s_ver] = 0
+        self.s_ver.came_from = None
+        self.s_ver.cost_so_far = 0
         self.mode = Mode.SIMULATION
         
 
@@ -307,22 +286,18 @@ class Grid:
         current = self.front.get()
         if current == self.e_ver:
             self.mode = Mode.RECONSTRUCT
-            prev = self.came_from[current]
-            current.set_visit(self.s_ver, self.e_ver, prev)
+            current.set_visit(self.s_ver, self.e_ver)
             current.display()
             self.backtrack = self.e_ver
             return
         for next in current.neighbours:
-            new_cost = self.cost_so_far[current] + 1
-            if next not in self.cost_so_far or new_cost < self.cost_so_far[next]:
-                self.cost_so_far[next] = new_cost
+            new_cost = current.cost_so_far + 1
+            if next.cost_so_far == -1 or new_cost < next.cost_so_far:
+                next.cost_so_far = new_cost
                 priority = new_cost + next.hst
                 self.front.put(next, priority)
-                self.came_from[next] = current
-        prev = None
-        if current != self.s_ver:
-            prev = self.came_from[current]
-        current.set_visit(self.s_ver, self.e_ver, prev)
+                next.came_from = current
+        current.set_visit(self.s_ver, self.e_ver)
         current.display()
 
     def reconstruct_handle(self):
@@ -331,8 +306,8 @@ class Grid:
                 self.running = False
                 return
         if self.backtrack != self.s_ver:
-            self.backtrack.path()
-            self.backtrack = self.backtrack.prev
+            self.backtrack.recon()
+            self.backtrack = self.backtrack.came_from
         else:
             self.s_ver.display()
             self.mode = Mode.IDLE
@@ -343,6 +318,22 @@ class Grid:
             if event.type == pygame.QUIT:
                 self.running = False
                 return
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                self.invasive = Tk()
+                self.invasive.geometry('205x110+850+490')
+                frame = Frame(self.invasive)
+
+                Label(frame, 
+                    text = '\nRerun the simulation ?\n').pack(side = 'top')
+                Button(frame, width=12, text = 'Rerun!',
+                    command=lambda : self.on_rerun()).pack(side = 'left')
+                Button(frame, width=12, text = 'Exit',
+                    command=lambda : self.on_exit()).pack(side = 'right')
+
+                frame.pack()
+                self.invasive.title('Restart')
+                self.invasive.mainloop()
+
 
     
 def main():
@@ -352,7 +343,6 @@ def main():
     while grid.is_running():
         clock.tick(60)
         grid.decide()
-        
     pygame.quit()
 
 if __name__ == '__main__':
